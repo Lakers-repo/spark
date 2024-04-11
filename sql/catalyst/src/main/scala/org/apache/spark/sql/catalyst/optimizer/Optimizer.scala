@@ -17,8 +17,6 @@
 
 package org.apache.spark.sql.catalyst.optimizer
 
-import scala.collection.mutable
-
 import org.apache.spark.sql.catalyst.analysis._
 import org.apache.spark.sql.catalyst.catalog.{InMemoryCatalog, SessionCatalog}
 import org.apache.spark.sql.catalyst.expressions._
@@ -34,6 +32,8 @@ import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.util.SchemaUtils._
 import org.apache.spark.util.Utils
+
+import scala.collection.mutable
 
 /**
  * Abstract class all optimizers should inherit of, contains the standard batches (extending
@@ -291,8 +291,16 @@ abstract class Optimizer(catalogManager: CatalogManager)
       RewriteAsOfJoin)
 
     override def apply(plan: LogicalPlan): LogicalPlan = {
-      rules.foldLeft(plan) { case (sp, rule) => rule.apply(sp) }
-        .transformAllExpressionsWithPruning(_.containsPattern(PLAN_EXPRESSION)) {
+      rules.foldLeft(plan) { case (sp, rule) =>
+        val result = rule.apply(sp)
+        val effective = !result.fastEquals(sp)
+        if (effective) {
+          println("Finish Analysis Phase ==============")
+          println(rule.ruleName)
+          println(result)
+        }
+        result
+      }.transformAllExpressionsWithPruning(_.containsPattern(PLAN_EXPRESSION)) {
           case s: SubqueryExpression =>
             val Subquery(newPlan, _) = apply(Subquery.fromExpression(s))
             s.withNewPlan(newPlan)
@@ -1589,6 +1597,28 @@ object PushDownPredicates extends Rule[LogicalPlan] with PredicateHelper {
       .orElse(PushPredicateThroughJoin.applyLocally)
   }
 }
+
+//object PushDownPredicates extends Rule[LogicalPlan] with PredicateHelper {
+//
+//  private val rules = Seq(
+//    CombineFilters,
+//    PushPredicateThroughNonJoin,
+//    PushPredicateThroughJoin)
+//
+//  override def apply(plan: LogicalPlan): LogicalPlan = {
+//    rules.foldLeft(plan) { case (sp, rule) =>
+//      val result=rule.apply(sp)
+//      val effective = !result.fastEquals(sp)
+//
+//      if (effective) {
+//        println("***********************************************")
+//        println("PushDownPredicates之   "+rule.ruleName)
+//        println(result)
+//      }
+//      result
+//    }
+//  }
+//}
 
 /**
  * Pushes [[Filter]] operators through many operators iff:

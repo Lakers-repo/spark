@@ -619,6 +619,9 @@ class SparkSession private(
     val plan = tracker.measurePhase(QueryPlanningTracker.PARSING) {
       sessionState.sqlParser.parsePlan(sqlText)
     }
+    println("============Parsed logical plan========")
+    println(plan)
+    println(plan.prettyJson)
     Dataset.ofRows(self, plan, tracker)
   }
 

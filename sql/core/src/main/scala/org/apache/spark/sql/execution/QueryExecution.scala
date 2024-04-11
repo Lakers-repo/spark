@@ -404,7 +404,7 @@ object QueryExecution {
       subquery: Boolean): Seq[Rule[SparkPlan]] = {
     // `AdaptiveSparkPlanExec` is a leaf node. If inserted, all the following rules will be no-op
     // as the original plan is hidden behind `AdaptiveSparkPlanExec`.
-    adaptiveExecutionRule.toSeq ++
+//    adaptiveExecutionRule.toSeq ++
     Seq(
       CoalesceBucketsInJoin,
       PlanDynamicPruningFilters(sparkSession),
@@ -420,7 +420,8 @@ object QueryExecution {
       DisableUnnecessaryBucketedScan,
       ApplyColumnarRulesAndInsertTransitions(
         sparkSession.sessionState.columnarRules, outputsColumnar = false),
-      CollapseCodegenStages()) ++
+//      CollapseCodegenStages()
+            ) ++
       (if (subquery) {
         Nil
       } else {
@@ -439,6 +440,25 @@ object QueryExecution {
     val preparedPlan = preparations.foldLeft(plan) { case (sp, rule) =>
       val result = rule.apply(sp)
       planChangeLogger.logRule(rule.ruleName, sp, result)
+      /*if (!result.equals(plan)) {
+        println("================preparations=================")
+        println(rule.ruleName)
+        println(result)
+        result.transformUp {
+          case operator: SparkPlan => {
+            println("================operator.requiredChildDistribution================")
+            println(operator.nodeName + "--" + operator.getClass.getName + "--" + operator.requiredChildDistribution)
+            println()
+            println("================operator.requiredChildOrdering================")
+            println(operator.nodeName + "--" + operator.getClass.getName + "--" + operator.requiredChildOrdering)
+            println()
+            println("================operator.outputPartitioning================")
+            println(operator.nodeName + "--" + operator.getClass.getName + "--" + operator.outputPartitioning)
+            println()
+          }
+            operator
+        }
+      }*/
       result
     }
     planChangeLogger.logBatch("Preparations", plan, preparedPlan)

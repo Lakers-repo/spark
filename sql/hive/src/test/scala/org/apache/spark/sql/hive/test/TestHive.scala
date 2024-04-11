@@ -237,6 +237,9 @@ private[hive] class TestHiveSparkSession(
    */
   override def sql(sqlText: String): DataFrame = withActive {
     val plan = sessionState.sqlParser.parsePlan(sqlText)
+    println("============Parsed logical plan========")
+    println(plan)
+    println(plan.prettyJson)
     Dataset.ofRows(self, plan)
   }
 
